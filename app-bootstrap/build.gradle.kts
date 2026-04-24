@@ -30,20 +30,6 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-security")
 
     testImplementation(project(":shared-testing"))
-}
-
-// Forward `-PjvmArgs="..."` from the command line onto the bootRun JVM so
-// the WebUI's "Start banking app with AppMap agent" button can attach the
-// AppMap Java agent without editing this file. The Spring Boot plugin
-// does NOT do this automatically — each gradle property the build cares
-// about must be wired explicitly.
-tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    val extraJvmArgs = providers.gradleProperty("jvmArgs").getOrElse("")
-    if (extraJvmArgs.isNotBlank()) {
-        jvmArgs(*extraJvmArgs.split(" ").filter { it.isNotBlank() }.toTypedArray())
-    }
 }
