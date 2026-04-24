@@ -57,7 +57,7 @@ public final class AmortizationCalculator {
             Money closing;
             if (i == periods) {
                 // Force balance to zero — dump whatever's left onto the final payment.
-                principalPortion = balance;
+                principalPortion = balance.plus(paymentMoney);
                 paymentThis = principalPortion.plus(interest);
                 closing = Money.zero(terms.currency());
             } else {
