@@ -70,7 +70,7 @@ public final class Money implements Comparable<Money> {
 
     public Money plus(Money other) {
         requireSameCurrency(other);
-        return of(amount.add(other.amount), currency);
+        return new Money(amount.add(other.amount), currency);
     }
 
     public Money minus(Money other) {
