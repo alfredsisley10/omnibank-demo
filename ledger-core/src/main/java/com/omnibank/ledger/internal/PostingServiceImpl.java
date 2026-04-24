@@ -92,7 +92,7 @@ public class PostingServiceImpl implements PostingService {
         }
         // 4. All referenced accounts exist and are open
         for (PostingLine l : entry.lines()) {
-            GlAccountEntity account = accounts.findById(l.account().value())
+            GlAccountEntity account = accounts.findById(l.account().toString())
                     .orElseThrow(() -> new PostingException(
                             PostingException.Reason.UNKNOWN_ACCOUNT, l.account().toString()));
             if (account.isClosed()) {
