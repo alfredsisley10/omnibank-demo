@@ -78,11 +78,6 @@ public class ConsumerAccountEntity extends AuditableEntity {
         this.freezeReason = null;
     }
 
-    public void markDormant(String reason) {
-        this.status = AccountStatus.DORMANT;
-        this.freezeReason = reason;
-    }
-
     public void close(Instant when) {
         if (this.status == AccountStatus.CLOSED) {
             throw new IllegalStateException("Account already closed: " + accountNumber);

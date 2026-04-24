@@ -9,11 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.time.Clock;
 
-@SpringBootApplication(exclude = {
-    org.springframework.boot.autoconfigure.jms.JmsAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.jms.activemq.ActiveMQAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration.class
-})
+@SpringBootApplication
 @ComponentScan(basePackages = "com.omnibank")
 @EntityScan(basePackages = "com.omnibank")
 @EnableJpaRepositories(basePackages = "com.omnibank")
