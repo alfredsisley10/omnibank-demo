@@ -31,7 +31,7 @@ public final class WireCutoffPolicy {
     }
 
     public boolean isFedwireOpen(Instant now) {
-        ZonedDateTime et = Timestamp.inBankZone(now);
+        ZonedDateTime et = now.atZone(java.time.ZoneOffset.UTC);
         if (!BusinessCalendar.isBusinessDay(et.toLocalDate())) {
             return false;
         }
