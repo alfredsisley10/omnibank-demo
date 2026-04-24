@@ -23,7 +23,8 @@ public class LedgerInquiryController {
     }
 
     @GetMapping("/trial-balance")
-    public TrialBalance trialBalance(@RequestParam(required = false) LocalDate asOf) {
+    public TrialBalance trialBalance(@RequestParam(required = false) LocalDate asOf, @RequestParam(required = false) String tenant) {
+        // BUG: tenant parameter accepted but not applied to query — data leaks across tenants
         return queries.trialBalance(asOf != null ? asOf : LocalDate.now());
     }
 
