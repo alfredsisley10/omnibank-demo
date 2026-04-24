@@ -19,10 +19,12 @@ Most real banks carry a monorepo that is too big to fit in a single LLM context 
 | Language | Java 17 (toolchain-enforced; Gradle 8.14.4 runs on JDK 17-25 — OpenJDK, Oracle JDK, Temurin, Corretto, Zulu all supported) |
 | Framework | Spring Boot 3.3.4 |
 | Build | Gradle (Kotlin DSL), with `org.gradle.parallel` + configuration cache |
-| Persistence | Spring Data JPA; H2 (dev default), PostgreSQL (profile `postgres`) |
+| Persistence (SQL) | Spring Data JPA; H2 (dev default), PostgreSQL (profile `postgres`) |
+| Persistence (NoSQL) | Spring Data MongoDB via `shared-nosql`; in-memory fallback by default, real Mongo with profile `mongo` (Testcontainers in tests) |
+| Streaming | Apache Kafka via `shared-kafka` and `spring-kafka`; in-memory bus by default, real broker with profile `kafka` |
 | Migrations | Flyway, per-module script locations |
-| Testing | JUnit 5, AssertJ, Spring Boot Test, Testcontainers BOM |
-| Instrumentation | [AppMap](https://appmap.io/) Gradle plugin (optional, off by default) |
+| Testing | JUnit 5, AssertJ, Spring Boot Test, Mockito, Testcontainers BOM (Kafka + MongoDB) |
+| Instrumentation | [AppMap](https://appmap.io/) Gradle plugin + interactive recording UI under `/appmap-ui/` |
 
 ## Repository layout
 
@@ -55,6 +57,11 @@ omnibank/
 ├── audit-log/                     Append-only audit trail
 ├── batch-processing/              EOD close, reconciliation, job orchestration
 ├── integration-gateway/           SFTP, MQ, mainframe, SOAP/REST facades
+│
+├── shared-kafka/                  Kafka producer/consumer abstractions, AppMap-correlated trace headers
+├── shared-nosql/                  MongoDB document store + in-memory fallback
+├── appmap-recording-ui/           Interactive AppMap Recording Studio (REST + HTML/JS UI)
+├── transaction-stream/            Cross-database streaming-transaction orchestrator (SQL + Mongo + Kafka)
 │
 ├── generated/                     51 product-variant modules  (codegen)
 ├── generated-brands/              89 brand-scoped product forks (codegen)
@@ -134,6 +141,22 @@ Expects a reachable `jdbc:postgresql://localhost:5432/omnibank` with user/passwo
 
 Flow tests under `app-bootstrap/src/test/java/com/omnibank/functional/` exercise cross-module scenarios (customer onboarding, payment processing, wire lifecycle, card spending).
 
+The test suite is split across four levels:
+
+| Level | Where | What it covers |
+|---|---|---|
+| **Unit** | `*Test.java` colocated with the production code | Individual classes — domain types, value objects, services with mocked collaborators |
+| **Slice / Controller** | `*ControllerTest.java`, `*ControllerIntegrationTest.java` | MockMvc-driven tests against a single controller + its advice |
+| **Functional** | `app-bootstrap/src/test/java/com/omnibank/functional/` | End-to-end Spring Boot scenarios that traverse multiple modules |
+| **Performance** | `*PerformanceTest.java` | Soft throughput budgets, eg. 500 streaming-transaction publishes in <10s |
+| **Integration (docker-tagged)** | `@Tag("docker")` classes | Real Kafka / MongoDB via Testcontainers — skipped unless Docker is available |
+
+The Testcontainers tests (`TracedKafkaIntegrationTest`, `MongoDocumentStoreIntegrationTest`) carry `@Tag("docker")` so the default test run stays hermetic. To include them:
+
+```bash
+./gradlew test -PincludeDocker=true                # opt-in flag (when wired in CI)
+```
+
 ### AppMap tracing
 
 AppMap instrumentation is off by default. Turn it on for a run:
@@ -144,12 +167,98 @@ AppMap instrumentation is off by default. Turn it on for a run:
 
 Captured traces land under `tmp/appmap/` and are ignored by git. `app-bootstrap` forwards `-PjvmArgs="..."` onto `bootRun` so the WebUI's "Start banking app with AppMap agent" button can attach the agent at runtime.
 
+### AppMap Recording Studio (interactive UI)
+
+The `appmap-recording-ui` module ships an interactive web app users can use to **create their own AppMaps** by clicking through the demo:
+
+- HTML: `http://localhost:8080/appmap-ui/index.html`
+- REST control plane: `/api/v1/appmap/recordings/**` (auth required)
+- Pre-canned playbooks: `/api/v1/appmap/playbooks/**`
+
+The studio supports the full lifecycle:
+
+1. **Start** a recording with a label + description.
+2. **Trigger** a built-in playbook (open account, submit ACH, balance lookup) or annotate the recording with a free-form action note.
+3. **Save** the recording — the appmap JSON lands under `tmp/appmap/interactive/` and is downloadable straight from the UI.
+4. **Cancel** mid-recording to discard, or **stop** without saving to inspect captured state first.
+
+The studio does NOT require the AppMap Java agent to be attached. When the agent is missing it falls back to "synthetic" mode (configurable via `omnibank.appmap.synthetic-recording`) — the action narrative is still captured and a placeholder JSON is written so test fixtures can drive the full lifecycle without bringing the agent into the JVM. To force "agent or nothing" semantics, activate the `appmap-strict` profile.
+
+Profiles that affect the studio:
+
+| Profile / property | Effect |
+|---|---|
+| (default) | Synthetic mode on so the UI works without the agent |
+| `appmap-strict` | Disable synthetic mode — recordings only work with the agent attached |
+| `omnibank.appmap.archive-dir` | Override the on-disk archive root (default `tmp/appmap/interactive`) |
+
+### Kafka integration
+
+`shared-kafka` provides Kafka topic constants, a `TracedKafkaPublisher` that stamps every record with an AppMap-correlated trace context, and a `TracedConsumerInterceptor` that reconstructs the trace on the consumer side. Topics are pre-declared under `KafkaTopics`:
+
+- `omnibank.payment.events`, `omnibank.ledger.events`, `omnibank.account.events`, `omnibank.fraud.signals`, `omnibank.compliance.alerts`
+- `omnibank.payment.command.submit`, `omnibank.ledger.command.post`
+- `omnibank.audit.trail`, `omnibank.appmap.spans`
+
+A real broker is OFF by default — the in-memory bus (`InMemoryKafkaBus`) handles producer/consumer fan-out so the demo runs end-to-end without external infrastructure. Switch on via:
+
+```bash
+SPRING_PROFILES_ACTIVE=kafka ./gradlew :app-bootstrap:bootRun \
+  -Domnibank.kafka.bootstrap-servers=broker:9092
+```
+
+`AppMapSpanRecorder` keeps a ring of recently observed produce/consume spans which the streaming-transaction controller exposes at `/api/v1/txstream/spans` for the recording UI to render live.
+
+### NoSQL (MongoDB) integration
+
+`shared-nosql` defines a `DocumentStore` interface with two implementations:
+
+- `InMemoryDocumentStore` — default; deterministic, fast, no external dependencies.
+- `MongoDocumentStore` — Spring Data Mongo backed; activated via the `mongo` profile + `omnibank.nosql.mongo.enabled=true`.
+
+```bash
+SPRING_PROFILES_ACTIVE=mongo ./gradlew :app-bootstrap:bootRun \
+  -Dspring.data.mongodb.uri=mongodb://localhost:27017/omnibank
+```
+
+### Streaming transactions across SQL + NoSQL + Kafka
+
+The `transaction-stream` module wires the three persistence/streaming layers into a single business operation. Each `POST /api/v1/txstream/publish` call:
+
+1. Inserts a row into the `txstream_transactions` SQL table (system of record).
+2. Upserts a denormalised projection into the Mongo `txstream_transactions` collection.
+3. Emits a record on the `omnibank.payment.events` Kafka topic, which a registered consumer projects into the `txstream_consumer_view` Mongo collection.
+
+Every leg's outcome is reported individually so AppMap traces (and the recording UI's "captured timeline") show which subsystem dominated latency or failed. Failures in legs 2 and 3 surface as warnings without rolling back leg 1 — matching the "system of record commits first" convention used in the existing payments hub.
+
+This is the recommended scenario to record an AppMap against:
+
+```bash
+# 1. Bootstrap the studio (synthetic mode is fine)
+./gradlew :app-bootstrap:bootRun
+
+# 2. Open http://localhost:8080/appmap-ui/index.html
+# 3. Click "Start recording", run the "Submit ACH payment" playbook a couple of times
+# 4. Click "Save appmap" — the JSON lands under tmp/appmap/interactive/
+```
+
 ## Working in this repo
 
 - Start from `app-bootstrap` to see how the monolith is wired.
 - Real business logic lives in `ledger-core`, `accounts-consumer`, `lending-corporate`, and `payments-hub` — these are the "flagship" modules. Other business modules publish APIs and stub implementations.
+- The cross-cutting infrastructure modules (`shared-kafka`, `shared-nosql`, `appmap-recording-ui`, `transaction-stream`) are all "rich impl" — they have substantive code, full unit tests, and a Spring auto-configuration that consents to be turned off via property flags. They are the recommended targets when an evaluation needs an AppMap that crosses persistence boundaries.
 - Before modifying code under `generated*/`, confirm whether it's actually on a live call path — much of it is not.
 - Module boundaries are enforced only by package conventions, not by the build. Please keep `internal/` types out of other modules' imports.
+
+## End-to-end recording walkthrough
+
+The fastest way to produce an interesting AppMap end-to-end:
+
+1. `./gradlew :app-bootstrap:bootRun` — boots with the in-memory bus and document store.
+2. Open `http://localhost:8080/appmap-ui/index.html`, label a recording, click **Start recording**.
+3. Click **Run** on the *Submit ACH payment* playbook — exercises the cross-module call chain.
+4. Hit `POST /api/v1/txstream/publish` (curl or the recording UI's custom-action note + a separate curl) — that one call writes to the SQL ledger, projects to Mongo, fans out to Kafka, and the registered consumer projects the consumer view back into Mongo.
+5. Click **Save appmap** — the JSON lands at `tmp/appmap/interactive/<recording-id>.appmap.json` and a download button appears.
 
 ## License
 

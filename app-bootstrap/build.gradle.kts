@@ -27,6 +27,10 @@ dependencies {
     implementation(project(":integration-gateway"))
     implementation(project(":customer-portal-api"))
     implementation(project(":admin-console-api"))
+    implementation(project(":shared-kafka"))
+    implementation(project(":shared-nosql"))
+    implementation(project(":appmap-recording-ui"))
+    implementation(project(":transaction-stream"))
 
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

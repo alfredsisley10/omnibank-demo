@@ -22,6 +22,13 @@ spring:
       - classpath:db/migration/accounts_consumer
       - classpath:db/migration/lending_corporate
       - classpath:db/migration/payments_hub
+      - classpath:db/migration/transaction_stream
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 
 server:
   port: 8080
@@ -31,6 +38,23 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+omnibank:
+  appmap:
+    # Enable a UI-driven recording experience even without the AppMap
+    # Java agent attached. Set to false in production-like profiles
+    # where you want a clean "recording disabled" message.
+    synthetic-recording: true
+    archive-dir: tmp/appmap/interactive
+  kafka:
+    enabled: false
+    bootstrap-servers: localhost:9092
+    consumer-group: omnibank-default
+    audit-mirror: true
+    span-buffer-size: 1024
+  nosql:
+    mongo:
+      enabled: false
 
 logging:
   level:
@@ -48,3 +72,39 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+---
+spring:
+  config:
+    activate:
+      on-profile: kafka
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+omnibank:
+  kafka:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mongo
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/omnibank
+omnibank:
+  nosql:
+    mongo:
+      enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: appmap-strict
+omnibank:
+  appmap:
+    synthetic-recording: false

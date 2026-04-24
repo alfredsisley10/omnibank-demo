@@ -58,12 +58,19 @@ public class HomeController {
                 Map.of("path", "/api/v1/accounts/{accountNumber}/balance", "auth", "basic",
                        "purpose", "Look up an account's current balance"),
                 Map.of("path", "/api/v1/payments", "auth", "basic",
-                       "purpose", "Customer-facing payment APIs")
+                       "purpose", "Customer-facing payment APIs"),
+                Map.of("path", "/api/v1/appmap/recordings", "auth", "basic",
+                       "purpose", "Interactive AppMap recording control plane"),
+                Map.of("path", "/api/v1/txstream/publish", "auth", "basic",
+                       "purpose", "Cross-database streaming transaction (SQL + NoSQL + Kafka)"),
+                Map.of("path", "/appmap-ui/index.html", "auth", "none",
+                       "purpose", "AppMap Recording Studio — interactive recording UI")
             ),
             "docs", Map.of(
                 "operationsGuide", "http://localhost:7777/docs/operations-guide",
                 "appmapViewer",    "http://localhost:7777/demo/appmap",
-                "demoIssues",      "http://localhost:7777/demo"
+                "demoIssues",      "http://localhost:7777/demo",
+                "recordingStudio", "/appmap-ui/index.html"
             ),
             "note", "Authenticated endpoints use Spring Security's auto-generated " +
                     "in-memory user. The password is logged to banking-app/tmp/bootRun.log " +
@@ -204,6 +211,7 @@ curl -H 'Accept: application/json' http://localhost:8080/</pre>
 
             <div class="footer-links">
                 <a href="http://localhost:7777/demo">← back to ai-bench WebUI</a> ·
+                <a href="/appmap-ui/index.html">AppMap Recording Studio</a> ·
                 <a href="http://localhost:7777/demo/appmap">AppMap traces</a> ·
                 <a href="http://localhost:7777/docs/operations-guide">Ops guide</a>
             </div>

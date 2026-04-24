@@ -34,7 +34,15 @@ public class DemoSecurityConfig {
                 // without credentials.
                 .requestMatchers("/", "/actuator/**", "/error",
                                  "/favicon.ico", "/_demo/autologin",
-                                 "/_appmap/**").permitAll()
+                                 "/_appmap/**",
+                                 // The interactive AppMap Recording
+                                 // Studio HTML/JS bundle ships under
+                                 // /appmap-ui/**. The page itself is
+                                 // public so first-time visitors land
+                                 // somewhere useful; the JSON APIs it
+                                 // talks to (under /api/v1/appmap/**)
+                                 // remain authenticated.
+                                 "/appmap-ui/**").permitAll()
                 .anyRequest().authenticated())
             .httpBasic(b -> {});
         return http.build();

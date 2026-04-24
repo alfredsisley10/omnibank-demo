@@ -44,6 +44,12 @@ include("audit-log")
 include("batch-processing")
 include("integration-gateway")
 
+// ---- Cross-cutting infrastructure (Kafka, NoSQL, AppMap recording UI) ----
+include("shared-kafka")
+include("shared-nosql")
+include("appmap-recording-ui")
+include("transaction-stream")
+
 // ---- App edges ----
 include("customer-portal-api")
 include("admin-console-api")

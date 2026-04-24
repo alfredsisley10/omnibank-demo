@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Omnibank — AppMap Recording Studio</title>
+<link rel="stylesheet" href="/appmap-ui/style.css">
+</head>
+<body>
+<header>
+    <div class="brand">
+        <h1>AppMap Recording Studio</h1>
+        <div class="sub">Interactive AppMap capture for the Omnibank demo</div>
+    </div>
+    <div id="recordingMode" class="mode warn">checking…</div>
+</header>
+
+<main>
+    <section id="newRecording" class="card">
+        <h2>1. Start a new recording</h2>
+        <p class="help">
+            Each recording captures everything happening on this JVM until you stop it.
+            Use a label that explains <em>what scenario</em> you are reproducing — it gets baked into the saved appmap and into the studio listing.
+        </p>
+        <div class="row">
+            <input id="newLabel" type="text" placeholder="e.g. ACH submission with sanctions hit" maxlength="80">
+            <textarea id="newDescription" placeholder="Optional longer notes the appmap will carry" rows="2"></textarea>
+            <button id="btnStart" class="primary">Start recording</button>
+        </div>
+        <div id="recordingError" class="banner err" hidden></div>
+    </section>
+
+    <section id="liveCard" class="card" hidden>
+        <h2>2. Active recording — <span id="liveLabel"></span></h2>
+        <div class="row meta">
+            <span class="badge"><span id="liveStatus">recording</span></span>
+            <span>id <code id="liveId"></code></span>
+            <span>elapsed <span id="liveElapsed">0s</span></span>
+            <span>events <span id="liveEvents">0</span></span>
+            <span>actions <span id="liveActions">0</span></span>
+        </div>
+
+        <h3>Trigger banking flows</h3>
+        <p class="help">Each playbook exercises a real cross-module call chain so the appmap has interesting frames to surface.</p>
+        <div id="playbookGrid" class="playbook-grid"></div>
+
+        <h3>Custom action note</h3>
+        <p class="help">Add a free-form action label — useful when you trigger something out-of-band (eg. a SQL console query) and want it represented in the appmap timeline.</p>
+        <div class="row">
+            <input id="actionKind" type="text" placeholder="kind (e.g. 'manual.note')" maxlength="40">
+            <input id="actionDescription" type="text" placeholder="description">
+            <input id="actionReference" type="text" placeholder="reference (optional)">
+            <button id="btnAddAction">Append action</button>
+        </div>
+
+        <h3>Captured timeline</h3>
+        <ol id="liveTimeline" class="timeline"></ol>
+
+        <div class="row actions">
+            <button id="btnStop">Stop (no save)</button>
+            <button id="btnSave" class="primary">Save appmap</button>
+            <button id="btnCancel" class="warn">Cancel &amp; discard</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>3. All recordings on this JVM</h2>
+        <div class="row">
+            <button id="btnRefresh">Refresh</button>
+            <span class="help">includes saved, cancelled, and active recordings</span>
+        </div>
+        <table id="recordingsTable">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Label</th>
+                    <th>Started</th>
+                    <th>Elapsed</th>
+                    <th>Events</th>
+                    <th>Actions</th>
+                    <th>File</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="recordingsTableBody"></tbody>
+        </table>
+    </section>
+
+    <section class="card">
+        <h2>4. Archived appmap files</h2>
+        <p class="help">Every saved recording also lives on disk under <code id="archiveRoot">tmp/appmap/interactive/</code>. The download endpoint returns the raw JSON suitable for the AppMap inspector.</p>
+        <table id="archiveTable">
+            <thead>
+                <tr><th>File</th><th>Size</th><th>Last modified</th><th></th></tr>
+            </thead>
+            <tbody id="archiveTableBody"></tbody>
+        </table>
+    </section>
+</main>
+
+<footer>
+    <span id="modeNote"></span>
+    <a href="/">← back to Omnibank home</a>
+</footer>
+
+<script src="/appmap-ui/app.js"></script>
+</body>
+</html>
