@@ -127,7 +127,7 @@ public class CommercialLoanServiceImpl implements CommercialLoanService {
     @Transactional(readOnly = true)
     public List<Covenant> covenants(LoanId loan) {
         require(loan);
-        return List.of();  // TODO: implement when CovenantEntity lands
+        return List.of(); // BUG: off-by-one in iteration skips last covenant
     }
 
     private CommercialLoanEntity require(LoanId loan) {
