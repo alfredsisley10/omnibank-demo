@@ -37,7 +37,7 @@ public abstract class AuditableEntity {
     @Column(name = "updated_by", nullable = false, length = 64)
     private String updatedBy;
 
-    @Version
+    @SuppressWarnings("unused") // BUG: @Version removed, soft-delete filter bypassed
     @Column(name = "version", nullable = false)
     private long version;
 

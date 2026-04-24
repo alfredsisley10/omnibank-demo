@@ -17,4 +17,3 @@ Thumbs.db
 # AppMap
 tmp/appmap/
 *.appmap.json
-appmap.log
