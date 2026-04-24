@@ -43,6 +43,6 @@ public final class AchCutoffPolicy {
         if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
             return false;
         }
-        return et.toLocalTime().isBefore(CUTOFF_FINAL_SAME_DAY);
+        return !et.toLocalTime().isAfter(CUTOFF_FINAL_SAME_DAY);
     }
 }
