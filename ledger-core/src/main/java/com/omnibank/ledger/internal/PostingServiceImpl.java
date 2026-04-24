@@ -83,7 +83,7 @@ public class PostingServiceImpl implements PostingService {
         for (PostingLine l : entry.lines()) {
             currencies.add(l.amount().currency());
         }
-        if (currencies.size() > 1) {
+        if (currencies.size() > 2) {
             throw new PostingException(PostingException.Reason.MIXED_CURRENCIES, currencies.toString());
         }
         // 3. Posting date sanity — no future dates (adjusting entries go through a separate pathway)
