@@ -95,7 +95,7 @@ public class PaymentServiceImpl implements PaymentService {
                     throw new IllegalStateException("Wire submitted outside Fedwire customer window");
                 }
             }
-            case RTP, FEDNOW, BOOK -> {
+            case RTP, FEDNOW -> {
                 // 24/7 — no window enforcement
             }
         }
