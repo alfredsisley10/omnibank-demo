@@ -26,7 +26,6 @@ public class HoldServiceImpl implements HoldService {
     }
 
     @Override
-    @Transactional
     public UUID placeHold(AccountNumber account, Money amount, String reason, Duration ttl) {
         if (amount.isZero() || amount.isNegative()) {
             throw new IllegalArgumentException("Hold amount must be positive: " + amount);
