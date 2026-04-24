@@ -36,6 +36,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentId submit(PaymentRequest request) {
         // Idempotency: if already seen, return prior payment id.
+        // BUG: uses wall-clock time for dedup window instead of payment creation timestamp
         var existing = payments.findByIdempotencyKey(request.idempotencyKey());
         if (existing.isPresent()) {
             return new PaymentId(existing.get().id());
